@@ -3,7 +3,6 @@ from vision_core.vision_runner import run_pipeline
 from vision_core.document_classifier import classify_document
 from vision_core.vision_utils import extract_preview_text
 from vision_core.email_utils import send_verification_email
-from verdict_utils import get_verdict_from_checklist
 import json
 
 st.set_page_config(page_title="VisionFlow AI – PECO Edition", layout="wide")
@@ -40,24 +39,39 @@ if st.button("🚀 Run Verification") and typed_files and use_case_intent:
     with st.spinner("Analyzing documents using VisionFlow..."):
         results, checklist, page_evidence, final_verdict = run_pipeline(use_case_intent, typed_files)
 
-    # ✅ Verdict First – Summarize checklist
-    checklist_summary = "\n".join([f"{item}: {status}" for item, status in checklist.items()])
-    verdict_text = get_verdict_from_checklist(checklist_summary)
+    short_verdict = final_verdict.get("short_verdict")
+    final_recommendation = final_verdict.get("final_recommendation")
+    explanation = final_verdict.get("explanation")
+    key_facts = final_verdict.get("key_facts", {})
+    raw_output = final_verdict.get("raw_output")
 
-    # Display the GPT verdict FIRST at the top
-    if verdict_text.lower().startswith("✅ proceed"):
-        st.markdown(f"<div style='background-color:#d1fae5;padding:1rem;border-radius:0.5rem;color:#065f46;font-size:1.2rem;'><b>{verdict_text}</b></div>", unsafe_allow_html=True)
+
+    if short_verdict:
+        if short_verdict.lower().startswith("✅"):
+            st.markdown(f"<div style='background-color:#d1fae5;padding:1rem;border-radius:0.5rem;color:#065f46;font-size:1.2rem;'><b>{short_verdict}</b></div>", unsafe_allow_html=True)
+        else:
+            st.markdown(f"<div style='background-color:#fee2e2;padding:1rem;border-radius:0.5rem;color:#991b1b;font-size:1.2rem;'><b>{short_verdict}</b></div>", unsafe_allow_html=True)
+
+
+    st.markdown("### 🧠 Explanation")
+    if explanation:
+        st.info(explanation)
+    elif raw_output:
+        st.info(f"🛠️ Raw GPT Output\n\n{raw_output}")
     else:
-        st.markdown(f"<div style='background-color:#fee2e2;padding:1rem;border-radius:0.5rem;color:#991b1b;font-size:1.2rem;'><b>{verdict_text}</b></div>", unsafe_allow_html=True)
+        st.warning("No explanation available.")
 
     # ✅ Final Recommendation
     st.markdown("## ✅ Recommendation")
-    st.success(final_verdict.get("final_recommendation", "❓ No recommendation returned."))
+    #st.success(final_verdict.get("final_recommendation", "❓ No recommendation returned."))
+    st.success(final_recommendation or "❓ No recommendation returned.")
 
     # 📧 Email results
     if send_email and user_email:
         try:
             html = f"""
+            <p style="font-size: 1.2em;"><strong>{final_verdict.get('short_verdict', '❓ No verdict returned.')}</strong></p>
+
             <h2>✅ Recommendation</h2>
             <p>{final_verdict.get('final_recommendation')}</p>
 
@@ -73,9 +87,6 @@ if st.button("🚀 Run Verification") and typed_files and use_case_intent:
             <ul>
             {''.join([f"<li>{item}: {status}</li>" for item, status in checklist.items()])}
             </ul>
-
-            <h3>🔍 Verdict</h3>
-            <p>{verdict_text}</p>
             """
             status = send_verification_email(user_email, "VisionFlow PECO Results", html)
             if status == 202:

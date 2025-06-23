@@ -31,6 +31,7 @@ def analyze_cross_document_consistency(vision_trace: list, checklist_summary: di
         "- It is OK if there are two names on the lease but only one ID, as long as one person matches.\n"
         "- Use human-level judgment. Do not be overly strict.\n\n"
         "Return a structured JSON object with:\n"
+        " - 'short_verdict': Either '✅ Proceed with account creation.' or '❌ Cannot proceed with account creation.'\n"
         " - 'final_recommendation': One strong sentence.\n"
         " - 'key_facts': Dictionary of the most relevant facts.\n"
         " - 'explanation': Paragraph summarizing your reasoning.\n\n"
@@ -47,11 +48,33 @@ def analyze_cross_document_consistency(vision_trace: list, checklist_summary: di
         max_tokens=1000
     )
 
-    try:
+    '''try:
         return json.loads(response.choices[0].message.content)
     except json.JSONDecodeError:
         return {
             "final_recommendation": response.choices[0].message.content.strip(),
             "key_facts": {},
             "explanation": "❌ Failed to parse structured output. Raw reasoning shown instead."
-        }
+        }'''
+    
+    try:
+        return json.loads(response.choices[0].message.content)
+    except json.JSONDecodeError:
+        # Try to recover if the model returned a JSON-looking string wrapped in backticks
+        raw = response.choices[0].message.content.strip()
+
+        # Remove ```json or ``` at the start/end if present
+        if raw.startswith("```json"):
+            raw = raw[len("```json"):].strip()
+        if raw.endswith("```"):
+            raw = raw[:-len("```")].strip()
+
+        try:
+            return json.loads(raw)  # Retry parsing
+        except json.JSONDecodeError:
+            return {
+                "raw_output": raw,  # Clean fallback
+                "final_recommendation": "",
+                "key_facts": {},
+                "explanation": ""
+            }
