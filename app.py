@@ -37,6 +37,7 @@ send_email = st.checkbox("Send results to email")
 
 if st.button("🚀 Run Verification") and typed_files and use_case_intent:
     with st.spinner("Analyzing documents using VisionFlow..."):
+        print("I'm calling the run pipeline function from vision runner")
         results, checklist, page_evidence, final_verdict = run_pipeline(use_case_intent, typed_files)
 
     short_verdict = final_verdict.get("short_verdict")

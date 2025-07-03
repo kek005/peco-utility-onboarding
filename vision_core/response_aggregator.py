@@ -6,6 +6,7 @@ load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def evaluate_results(full_trace, checklist_items):
+    print("I'm in the function evaluate results in response aggregator file")
     final_results = {}
     page_evidence = {}
 
@@ -15,7 +16,11 @@ def evaluate_results(full_trace, checklist_items):
 
     for item in checklist_items:
         for row in full_trace:
+            print("I'm calling the function run_gpt_requirement_check(requirement, response):")
             gpt_eval = run_gpt_requirement_check(item, row["response"])
+            print("Done")
+            print("Here is what that run requirement check function got back:")
+            print(gpt_eval)
 
             if gpt_eval.lower().startswith("yes"):
                 final_results[item] = f"✅ Found on Page {row['page']}"
@@ -25,6 +30,7 @@ def evaluate_results(full_trace, checklist_items):
     return final_results, page_evidence
 
 def run_gpt_requirement_check(requirement, response):
+    print("I'm in the function run_gpt_requirement_check(requirement, response): inside the response aggregator file")
     prompt = f"""
 You are a document analyst verifying whether a response from an AI vision model satisfies a given requirement.
 
